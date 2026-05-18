@@ -42,11 +42,11 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 mkdir -p "$config_dir" "$bin_dir"
 
-cat > "$config_dir/config.env" <<EOF
-DISCORD_WORKFLOW_API_URL=$api_url
-DISCORD_WORKFLOW_TOKEN=$token
-DISCORD_WORKFLOW_SUBMITTER=$submitter
-EOF
+{
+  printf 'DISCORD_WORKFLOW_API_URL=%q\n' "$api_url"
+  printf 'DISCORD_WORKFLOW_TOKEN=%q\n' "$token"
+  printf 'DISCORD_WORKFLOW_SUBMITTER=%q\n' "$submitter"
+} > "$config_dir/config.env"
 chmod 600 "$config_dir/config.env"
 
 if [[ -f "$script_dir/AGENTS.discord-workflow.md" ]]; then
