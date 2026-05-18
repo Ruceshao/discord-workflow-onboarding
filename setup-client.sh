@@ -99,6 +99,41 @@ curl -sS "$DISCORD_WORKFLOW_API_URL/publish" \
 EOF
 chmod +x "$bin_dir/discord-workflow-publish"
 
+cat > "$bin_dir/discord-workflow-close" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+config_file="$HOME/.discord-workflow/config.env"
+if [[ ! -f "$config_file" ]]; then
+  echo "Missing $config_file. Run setup-client.sh first." >&2
+  exit 1
+fi
+
+work_item_id="${1:-}"
+if [[ -z "$work_item_id" ]]; then
+  echo "Usage: discord-workflow-close REQ-0001 [close note]" >&2
+  exit 2
+fi
+shift || true
+
+note="${*:-已确认完成并闭口。}"
+
+source "$config_file"
+
+payload="$(
+  node - "$work_item_id" "$note" "${DISCORD_WORKFLOW_SUBMITTER:-}" <<'NODE'
+const [workItemId, note, closedBy] = process.argv.slice(2);
+process.stdout.write(JSON.stringify({ workItemId, note, closedBy }));
+NODE
+)"
+
+curl -sS "$DISCORD_WORKFLOW_API_URL/close" \
+  -H "authorization: Bearer $DISCORD_WORKFLOW_TOKEN" \
+  -H "content-type: application/json" \
+  --data-binary "$payload"
+EOF
+chmod +x "$bin_dir/discord-workflow-close"
+
 if command -v curl >/dev/null 2>&1; then
   curl -fsSL "$api_url/health" >/dev/null
 fi
@@ -111,6 +146,9 @@ $config_dir/AGENTS.discord-workflow.md
 
 发布命令：
 $bin_dir/discord-workflow-publish
+
+关闭命令：
+$bin_dir/discord-workflow-close REQ-0001 "已确认完成并闭口。"
 
 如果你的 shell 找不到这个命令，把下面这行加入 ~/.zshrc 或 ~/.bashrc：
 export PATH="\$HOME/.local/bin:\$PATH"

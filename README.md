@@ -99,6 +99,20 @@ Discord 只保留两个主要 Forum：
 }
 ```
 
+### `POST /close`
+
+按编号关闭需求，把状态标签改成 `已完成`，保留优先级标签，并在 Discord 里补充闭口记录。
+
+请求：
+
+```json
+{
+  "workItemId": "REQ-0001",
+  "note": "已确认完成并闭口。",
+  "closedBy": "Ruceshao"
+}
+```
+
 ## 安全规则
 
 - `DISCORD_WORKFLOW_TOKEN` 不要写进仓库。

@@ -88,6 +88,32 @@ Discord 只保留两个主要 Forum：
 }
 ```
 
+### `POST /close`
+
+按需求编号关闭需求。bot 会根据本地索引定位 Discord 帖子，把状态标签改成 `已完成`，保留优先级标签，并补充闭口记录。
+
+请求：
+
+```json
+{
+  "workItemId": "REQ-0001",
+  "note": "已确认完成并闭口。",
+  "closedBy": "Ruceshao"
+}
+```
+
+响应：
+
+```json
+{
+  "ok": true,
+  "status": "closed",
+  "workItemId": "REQ-0001",
+  "tags": ["已完成", "P0"],
+  "url": "https://discord.com/channels/..."
+}
+```
+
 响应：
 
 ```json
