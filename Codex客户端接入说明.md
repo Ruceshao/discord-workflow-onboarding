@@ -45,7 +45,7 @@ export DISCORD_WORKFLOW_TOKEN="由管理员发放的 token"
 4. AI 给出最终稿候选。
 5. 用户在 AI 客户端里继续修改，直到确认。
 6. 用户确认后，AI 调用 Discord Workflow Bot 的 `/publish` 接口。
-7. Bot 把内容直接发布到对应 Forum。
+7. Bot 分配需求编号，并把内容直接发布到对应 Forum。
 
 Discord 只保留两个主要 Forum：
 
@@ -56,6 +56,8 @@ Discord 只保留两个主要 Forum：
 
 - 状态：`未开始`、`进行中`、`阻塞中`、`已完成`、`已归档`
 - 优先级：`P0`、`P1`、`P2`、`P3`
+
+需求编号由 bot 自动生成，例如 `REQ-0001`。AI 客户端不要自己编编号；发布成功后，用返回的 `workItemId` 定位后续更新、改标签或关闭需求。
 
 ## Bot API
 
@@ -92,6 +94,7 @@ Discord 只保留两个主要 Forum：
 {
   "ok": true,
   "status": "published",
+  "workItemId": "REQ-0001",
   "url": "https://discord.com/channels/..."
 }
 ```

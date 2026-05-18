@@ -57,6 +57,8 @@ Discord 只保留两个主要 Forum：
 - 状态：`未开始`、`进行中`、`阻塞中`、`已完成`、`已归档`
 - 优先级：`P0`、`P1`、`P2`、`P3`
 
+需求编号由 bot 自动生成，例如 `REQ-0001`。编号会写入需求帖标题、正文和 API 响应，后续改标签、关闭需求或补充进展时优先使用编号定位。
+
 ## Bot API
 
 ### `GET /onboarding/setup.sh`
@@ -92,6 +94,7 @@ Discord 只保留两个主要 Forum：
 {
   "ok": true,
   "status": "published",
+  "workItemId": "REQ-0001",
   "url": "https://discord.com/channels/..."
 }
 ```
