@@ -23,6 +23,8 @@
 https://workflow.weebstrading.xyz
 ```
 
+接入密钥应该一人一个。管理员在 VPS 上生成后私发给新人，VPS 只保存 hash 和归属信息。
+
 AI 会自动完成：
 
 - 下载工作流规则

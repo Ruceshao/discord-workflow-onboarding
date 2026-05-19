@@ -23,6 +23,8 @@
 https://workflow.weebstrading.xyz
 ```
 
+接入密钥应该一人一个，不要多人共用。密钥只在生成时显示一次；VPS 里只保存 hash 和归属信息。
+
 AI 会自动完成：
 
 - 下载工作流规则
@@ -133,7 +135,26 @@ Discord 只保留两个主要 Forum：
 ## 安全规则
 
 - `DISCORD_WORKFLOW_TOKEN` 不要写进仓库。
+- 接入密钥不要写进仓库、Discord 公开频道或群聊；建议管理员私发给个人。
+- 新人接入密钥一人一个，并在 VPS 的 `data/api-keys.json` 入档。这个文件只保存 hash，不保存明文 token。
 - AI 每次调用 bot 前必须展示最终稿并获得用户确认。
 - 用户要求修改时，在 AI 客户端里直接改，不要让用户去 Discord 退回重来。
 - 如果缺少 token 或 API URL，只输出最终稿，不要尝试发布。
 - 生产环境建议通过 HTTPS 暴露 API；没有 HTTPS 前，不要在公网明文传输 token。
+
+## 管理员发放密钥
+
+在 VPS 项目目录运行：
+
+```bash
+cd /home/ubuntu/discord-ai-workflow-bot
+npm run key:create -- --owner "同事姓名" --label "同事姓名 Codex 客户端"
+```
+
+命令会输出 `token`，只复制这一段给同事。`data/api-keys.json` 会记录 key id、owner、label、hash 和创建时间。
+
+吊销某个 key 时，编辑 `data/api-keys.json`，把对应记录的 `status` 改成 `revoked`，然后重启 bot：
+
+```bash
+sudo systemctl restart discord-ai-workflow-bot.service
+```
