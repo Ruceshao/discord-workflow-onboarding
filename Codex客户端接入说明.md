@@ -13,10 +13,15 @@
 3. AI 会自己从 GitHub 下载工作流文件。
 4. AI 会读取本地 Markdown 文件并自动安装配置。
 
-管理员只需要给新人两项：
+管理员只需要给新人一项：
 
-- `API_URL`
 - `接入密钥`
+
+当前 API URL 固定为：
+
+```text
+https://workflow.weebstrading.xyz
+```
 
 AI 会自动完成：
 
@@ -31,7 +36,7 @@ AI 会自动完成：
 2. 在本地配置两个环境变量：
 
 ```bash
-export DISCORD_WORKFLOW_API_URL="http://YOUR_SERVER:8788"
+export DISCORD_WORKFLOW_API_URL="https://workflow.weebstrading.xyz"
 export DISCORD_WORKFLOW_TOKEN="由管理员发放的 token"
 ```
 
@@ -88,6 +93,17 @@ Discord 只保留两个主要 Forum：
 }
 ```
 
+响应：
+
+```json
+{
+  "ok": true,
+  "status": "published",
+  "workItemId": "REQ-0001",
+  "url": "https://discord.com/channels/..."
+}
+```
+
 ### `POST /close`
 
 按需求编号关闭需求。bot 会根据本地索引定位 Discord 帖子，把状态标签改成 `已完成`，保留优先级标签，并补充闭口记录。
@@ -110,17 +126,6 @@ Discord 只保留两个主要 Forum：
   "status": "closed",
   "workItemId": "REQ-0001",
   "tags": ["已完成", "P0"],
-  "url": "https://discord.com/channels/..."
-}
-```
-
-响应：
-
-```json
-{
-  "ok": true,
-  "status": "published",
-  "workItemId": "REQ-0001",
   "url": "https://discord.com/channels/..."
 }
 ```
