@@ -29,6 +29,7 @@ AI 会自动完成：
 
 - 下载工作流规则
 - 写入本机配置
+- 安装 Codex skill：`discord-workflow`
 - 安装 `discord-workflow-publish` 命令
 - 安装 `discord-workflow-list`、`discord-workflow-read`、`discord-workflow-reply`、`discord-workflow-close` 命令
 - 做 health check
@@ -46,7 +47,7 @@ export DISCORD_WORKFLOW_TOKEN="由管理员发放的 token"
 3. 用户在 Codex / Claude 里说：
 
 ```text
-根据公司的 Discord 工作流规则，把下面内容整理成需求最终稿。先给我看，不要直接发布。
+使用 discord-workflow skill，帮我把下面内容整理成需求最终稿。先给我看，不要直接发布。
 ...
 ```
 
@@ -66,6 +67,22 @@ Discord 只保留两个主要 Forum：
 - 优先级：`P0`、`P1`、`P2`、`P3`
 
 需求编号由 bot 自动生成，例如 `REQ-0001`。AI 客户端不要自己编编号；发布成功后，用返回的 `workItemId` 定位后续读取、回复、改标签或关闭需求。
+
+## Codex Skill
+
+安装脚本会把 skill 安装到：
+
+```text
+~/.codex/skills/discord-workflow/
+```
+
+Codex 用户可以直接说：
+
+```text
+使用 discord-workflow skill，帮我整理下面的需求。先给我看最终稿，不要发布。
+```
+
+skill 本身只负责触发和流程约束；详细格式仍然读取本机的 `~/.discord-workflow/AGENTS.discord-workflow.md`。
 
 ## Bot API
 

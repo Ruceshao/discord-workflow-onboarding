@@ -38,9 +38,11 @@ fi
 api_url="${api_url%/}"
 config_dir="$HOME/.discord-workflow"
 bin_dir="$HOME/.local/bin"
+codex_home="${CODEX_HOME:-$HOME/.codex}"
+skill_dir="$codex_home/skills/discord-workflow"
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-mkdir -p "$config_dir" "$bin_dir"
+mkdir -p "$config_dir" "$bin_dir" "$skill_dir/agents"
 
 {
   printf 'DISCORD_WORKFLOW_API_URL=%q\n' "$api_url"
@@ -49,8 +51,15 @@ mkdir -p "$config_dir" "$bin_dir"
 } > "$config_dir/config.env"
 chmod 600 "$config_dir/config.env"
 
+agent_rules_source=""
 if [[ -f "$script_dir/AGENTS.discord-workflow.md" ]]; then
-  cp "$script_dir/AGENTS.discord-workflow.md" "$config_dir/AGENTS.discord-workflow.md"
+  agent_rules_source="$script_dir/AGENTS.discord-workflow.md"
+elif [[ -f "$script_dir/../docs/AGENTS.discord-workflow.md" ]]; then
+  agent_rules_source="$script_dir/../docs/AGENTS.discord-workflow.md"
+fi
+
+if [[ -n "$agent_rules_source" ]]; then
+  cp "$agent_rules_source" "$config_dir/AGENTS.discord-workflow.md"
 elif command -v curl >/dev/null 2>&1; then
   curl -fsSL "$api_url/onboarding/agents.md" -o "$config_dir/AGENTS.discord-workflow.md" || true
 fi
@@ -71,6 +80,46 @@ if [[ ! -s "$config_dir/AGENTS.discord-workflow.md" ]]; then
 - 用户要求修改时，直接在当前 AI 客户端里改稿。
 - 对外部可见动作必须先给用户看完整最终稿，并等用户确认后再发布。
 - 回复已有需求前先调用 `discord-workflow-read REQ-0001` 读取上下文；确认后再调用 `discord-workflow-reply`。
+EOF
+fi
+
+skill_source_dir=""
+if [[ -f "$script_dir/skills/discord-workflow/SKILL.md" ]]; then
+  skill_source_dir="$script_dir/skills/discord-workflow"
+elif [[ -f "$script_dir/../skills/discord-workflow/SKILL.md" ]]; then
+  skill_source_dir="$script_dir/../skills/discord-workflow"
+fi
+
+if [[ -n "$skill_source_dir" ]]; then
+  cp "$skill_source_dir/SKILL.md" "$skill_dir/SKILL.md"
+
+  if [[ -f "$skill_source_dir/agents/openai.yaml" ]]; then
+    cp "$skill_source_dir/agents/openai.yaml" "$skill_dir/agents/openai.yaml"
+  fi
+elif command -v curl >/dev/null 2>&1; then
+  curl -fsSL "$api_url/onboarding/skills/discord-workflow/SKILL.md" -o "$skill_dir/SKILL.md" || true
+  curl -fsSL "$api_url/onboarding/skills/discord-workflow/agents/openai.yaml" -o "$skill_dir/agents/openai.yaml" || true
+fi
+
+if [[ ! -s "$skill_dir/SKILL.md" ]]; then
+  cat > "$skill_dir/SKILL.md" <<'EOF'
+---
+name: discord-workflow
+description: Company Discord workflow assistant for Codex. Use when the user asks to整理、发布、读取、回复、更新、关闭、闭口 Discord 工作流记录, mentions 需求池、会议纪要、REQ 编号、进度、卡点、阻塞、决策记录, or wants natural-language work input converted into the company's Discord workflow format.
+---
+
+# Discord Workflow
+
+Read `~/.discord-workflow/AGENTS.discord-workflow.md` before doing any workflow work. Use Chinese by default. Show drafts or operation summaries before any Discord write. Publish with `discord-workflow-publish`, list with `discord-workflow-list`, read existing requirements with `discord-workflow-read`, reply with `discord-workflow-reply`, and close with `discord-workflow-close`. Never reveal `~/.discord-workflow/config.env` or `DISCORD_WORKFLOW_TOKEN`.
+EOF
+fi
+
+if [[ ! -s "$skill_dir/agents/openai.yaml" ]]; then
+  cat > "$skill_dir/agents/openai.yaml" <<'EOF'
+interface:
+  display_name: "Discord Workflow"
+  short_description: "整理、读取、回复和发布公司 Discord 工作流记录"
+  default_prompt: "使用 discord-workflow skill，帮我整理下面的需求；先给我看最终稿，不要发布。"
 EOF
 fi
 
@@ -273,6 +322,9 @@ cat <<EOF
 规则文件：
 $config_dir/AGENTS.discord-workflow.md
 
+Codex skill：
+$skill_dir
+
 发布命令：
 $bin_dir/discord-workflow-publish
 
@@ -292,5 +344,5 @@ $bin_dir/discord-workflow-reply REQ-0001 --kind progress --tag 进行中 "这里
 export PATH="\$HOME/.local/bin:\$PATH"
 
 之后你可以对 AI 说：
-“请读取 ~/.discord-workflow/AGENTS.discord-workflow.md，并按公司 Discord 工作流帮我整理和发布。”
+“使用 discord-workflow skill，帮我整理这个需求。先给我看最终稿，不要发布。”
 EOF
