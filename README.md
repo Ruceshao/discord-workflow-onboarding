@@ -30,6 +30,7 @@ AI 会自动完成：
 - 下载工作流规则
 - 写入本机配置
 - 安装 `discord-workflow-publish` 命令
+- 安装 `discord-workflow-list`、`discord-workflow-read`、`discord-workflow-reply`、`discord-workflow-close` 命令
 - 做 health check
 
 手动配置方式如下，仅供管理员或高级用户排查问题：
@@ -64,7 +65,7 @@ Discord 只保留两个主要 Forum：
 - 状态：`未开始`、`进行中`、`阻塞中`、`已完成`、`已归档`
 - 优先级：`P0`、`P1`、`P2`、`P3`
 
-需求编号由 bot 自动生成，例如 `REQ-0001`。编号会写入需求帖标题、正文和 API 响应，后续改标签、关闭需求或补充进展时优先使用编号定位。
+需求编号由 bot 自动生成，例如 `REQ-0001`。编号会写入需求帖标题、正文和 API 响应，后续读取、回复、改标签、关闭需求或补充进展时优先使用编号定位。
 
 ## Bot API
 
@@ -118,6 +119,14 @@ Discord 只保留两个主要 Forum：
   "note": "已确认完成并闭口。",
   "closedBy": "Ruceshao"
 }
+```
+
+读取和回复已有需求：
+
+```bash
+discord-workflow-list --status 进行中
+discord-workflow-read REQ-0001
+discord-workflow-reply REQ-0001 --kind progress --tag 进行中 "这里写进度或卡点说明。"
 ```
 
 ## 安全规则

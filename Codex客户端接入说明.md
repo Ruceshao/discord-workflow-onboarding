@@ -30,6 +30,7 @@ AI 会自动完成：
 - 下载工作流规则
 - 写入本机配置
 - 安装 `discord-workflow-publish` 命令
+- 安装 `discord-workflow-list`、`discord-workflow-read`、`discord-workflow-reply`、`discord-workflow-close` 命令
 - 做 health check
 
 手动配置方式如下，仅供管理员或高级用户排查问题：
@@ -64,7 +65,7 @@ Discord 只保留两个主要 Forum：
 - 状态：`未开始`、`进行中`、`阻塞中`、`已完成`、`已归档`
 - 优先级：`P0`、`P1`、`P2`、`P3`
 
-需求编号由 bot 自动生成，例如 `REQ-0001`。AI 客户端不要自己编编号；发布成功后，用返回的 `workItemId` 定位后续更新、改标签或关闭需求。
+需求编号由 bot 自动生成，例如 `REQ-0001`。AI 客户端不要自己编编号；发布成功后，用返回的 `workItemId` 定位后续读取、回复、改标签或关闭需求。
 
 ## Bot API
 
@@ -104,6 +105,80 @@ Discord 只保留两个主要 Forum：
   "workItemId": "REQ-0001",
   "url": "https://discord.com/channels/..."
 }
+```
+
+### `GET /items`
+
+读取 bot 本地索引里的需求列表，可用于用户只记得大概标题、状态或优先级时辅助定位编号。
+
+示例：
+
+```bash
+discord-workflow-list --status 进行中
+```
+
+接口响应：
+
+```json
+{
+  "ok": true,
+  "count": 1,
+  "items": [
+    {
+      "workItemId": "REQ-0001",
+      "type": "requirement",
+      "title": "测试本地 AI 工作流",
+      "status": "进行中",
+      "tags": ["进行中", "P0"],
+      "url": "https://discord.com/channels/..."
+    }
+  ]
+}
+```
+
+### `GET /items/:workItemId`
+
+按需求编号读取单条需求的 Discord 线程上下文，包括原帖和最近回复。AI 回复、改标签或闭口前应该先读取。
+
+示例：
+
+```bash
+discord-workflow-read REQ-0001
+```
+
+### `POST /reply`
+
+按需求编号在对应 Discord 需求帖下回复进度、卡点、决策或补充说明。需要改状态时，通过 `tags` 传入新的状态标签；不需要改状态时不要传标签。
+
+请求：
+
+```json
+{
+  "workItemId": "REQ-0001",
+  "kind": "blocker",
+  "body": "当前卡点：需要确认 API 读取权限和回复格式。",
+  "tags": ["阻塞中"],
+  "submitter": "Ruce Shao"
+}
+```
+
+响应：
+
+```json
+{
+  "ok": true,
+  "status": "replied",
+  "workItemId": "REQ-0001",
+  "kind": "blocker",
+  "tags": ["阻塞中", "P0"],
+  "url": "https://discord.com/channels/..."
+}
+```
+
+本地命令：
+
+```bash
+discord-workflow-reply REQ-0001 --kind blocker --tag 阻塞中 "当前卡点：需要确认 API 读取权限和回复格式。"
 ```
 
 ### `POST /close`

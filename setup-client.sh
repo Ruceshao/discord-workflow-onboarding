@@ -65,11 +65,12 @@ if [[ ! -s "$config_dir/AGENTS.discord-workflow.md" ]]; then
 - 只使用 `requirement` 和 `meeting` 两种发布类型。
 - 需求池里的对象默认都是需求/工作项，不要打类型标签。
 - 需求帖只使用状态和优先级标签：未开始、进行中、阻塞中、已完成、已归档、P0、P1、P2、P3。
-- 需求编号由 bot 发布时自动生成，例如 REQ-0001。不要自己编编号；后续更新、改标签或关闭需求时优先使用编号定位。
+- 需求编号由 bot 发布时自动生成，例如 REQ-0001。不要自己编编号；后续读取、回复、改标签或关闭需求时优先使用编号定位。
 - 不要编造负责人、截止时间、优先级、事实、结论或承诺。
 - 信息缺失时写“待确认”。
 - 用户要求修改时，直接在当前 AI 客户端里改稿。
 - 对外部可见动作必须先给用户看完整最终稿，并等用户确认后再发布。
+- 回复已有需求前先调用 `discord-workflow-read REQ-0001` 读取上下文；确认后再调用 `discord-workflow-reply`。
 EOF
 fi
 
@@ -134,6 +135,134 @@ curl -sS "$DISCORD_WORKFLOW_API_URL/close" \
 EOF
 chmod +x "$bin_dir/discord-workflow-close"
 
+cat > "$bin_dir/discord-workflow-read" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+config_file="$HOME/.discord-workflow/config.env"
+if [[ ! -f "$config_file" ]]; then
+  echo "Missing $config_file. Run setup-client.sh first." >&2
+  exit 1
+fi
+
+work_item_id="${1:-}"
+if [[ -z "$work_item_id" ]]; then
+  echo "Usage: discord-workflow-read REQ-0001" >&2
+  exit 2
+fi
+
+source "$config_file"
+
+curl -sS "$DISCORD_WORKFLOW_API_URL/items/$work_item_id" \
+  -H "authorization: Bearer $DISCORD_WORKFLOW_TOKEN"
+EOF
+chmod +x "$bin_dir/discord-workflow-read"
+
+cat > "$bin_dir/discord-workflow-list" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+config_file="$HOME/.discord-workflow/config.env"
+if [[ ! -f "$config_file" ]]; then
+  echo "Missing $config_file. Run setup-client.sh first." >&2
+  exit 1
+fi
+
+query=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --status)
+      query="${query}${query:+&}status=$(node -e 'process.stdout.write(encodeURIComponent(process.argv[1] || ""))' "${2:-}")"
+      shift 2
+      ;;
+    --type)
+      query="${query}${query:+&}type=$(node -e 'process.stdout.write(encodeURIComponent(process.argv[1] || ""))' "${2:-}")"
+      shift 2
+      ;;
+    *)
+      echo "Usage: discord-workflow-list [--status 未开始|进行中|阻塞中|已完成|已归档] [--type requirement|meeting]" >&2
+      exit 2
+      ;;
+  esac
+done
+
+source "$config_file"
+
+url="$DISCORD_WORKFLOW_API_URL/items"
+if [[ -n "$query" ]]; then
+  url="$url?$query"
+fi
+
+curl -sS "$url" \
+  -H "authorization: Bearer $DISCORD_WORKFLOW_TOKEN"
+EOF
+chmod +x "$bin_dir/discord-workflow-list"
+
+cat > "$bin_dir/discord-workflow-reply" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+config_file="$HOME/.discord-workflow/config.env"
+if [[ ! -f "$config_file" ]]; then
+  echo "Missing $config_file. Run setup-client.sh first." >&2
+  exit 1
+fi
+
+work_item_id="${1:-}"
+if [[ -z "$work_item_id" ]]; then
+  echo "Usage: discord-workflow-reply REQ-0001 [--kind progress|blocker|decision|note] [--tag 进行中] \"reply body\"" >&2
+  exit 2
+fi
+shift || true
+
+kind="progress"
+tags=()
+body_parts=()
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --kind)
+      kind="${2:-progress}"
+      shift 2
+      ;;
+    --tag)
+      tags+=("${2:-}")
+      shift 2
+      ;;
+    *)
+      body_parts+=("$1")
+      shift
+      ;;
+  esac
+done
+
+body="${body_parts[*]:-}"
+if [[ -z "$body" ]]; then
+  body="$(cat)"
+fi
+
+source "$config_file"
+
+tags_joined=""
+if [[ ${#tags[@]} -gt 0 ]]; then
+  tags_joined="$(IFS=$'\037'; echo "${tags[*]}")"
+fi
+
+payload="$(
+  node - "$work_item_id" "$kind" "$body" "${DISCORD_WORKFLOW_SUBMITTER:-}" "$tags_joined" <<'NODE'
+const [workItemId, kind, body, submitter, joinedTags] = process.argv.slice(2);
+const tags = joinedTags ? joinedTags.split('\x1f').filter(Boolean) : [];
+process.stdout.write(JSON.stringify({ workItemId, kind, body, submitter, tags }));
+NODE
+)"
+
+curl -sS "$DISCORD_WORKFLOW_API_URL/reply" \
+  -H "authorization: Bearer $DISCORD_WORKFLOW_TOKEN" \
+  -H "content-type: application/json" \
+  --data-binary "$payload"
+EOF
+chmod +x "$bin_dir/discord-workflow-reply"
+
 if command -v curl >/dev/null 2>&1; then
   curl -fsSL "$api_url/health" >/dev/null
 fi
@@ -149,6 +278,15 @@ $bin_dir/discord-workflow-publish
 
 关闭命令：
 $bin_dir/discord-workflow-close REQ-0001 "已确认完成并闭口。"
+
+列表命令：
+$bin_dir/discord-workflow-list --status 进行中
+
+读取命令：
+$bin_dir/discord-workflow-read REQ-0001
+
+回复命令：
+$bin_dir/discord-workflow-reply REQ-0001 --kind progress --tag 进行中 "这里写进度或卡点说明。"
 
 如果你的 shell 找不到这个命令，把下面这行加入 ~/.zshrc 或 ~/.bashrc：
 export PATH="\$HOME/.local/bin:\$PATH"
