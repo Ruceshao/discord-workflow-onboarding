@@ -92,3 +92,13 @@ discord-workflow-close REQ-0001 "闭口说明"
 ## Safety Check
 
 For setup verification, only run health checks and read/list commands. Do not publish or reply as a test unless the user explicitly asks for a real Discord write.
+
+## Maintainer Updates
+
+When maintaining or updating the workflow bot, API, onboarding repo, setup script, Codex skill, or workflow rules:
+
+1. Update the GitHub onboarding repo and the VPS bot files.
+2. Run `npm run sync:onboarding` from the bot project so Discord `#从这里开始` reflects the latest onboarding entry.
+3. Post or update `#bot更新日志` with what changed and how existing teammates should update.
+
+Treat this as bot maintenance, not a normal requirement post. Do not publish it to `需求池`.

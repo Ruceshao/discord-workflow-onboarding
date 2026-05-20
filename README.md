@@ -84,6 +84,10 @@ Codex 用户可以直接说：
 
 skill 本身只负责触发和流程约束；详细格式仍然读取本机的 `~/.discord-workflow/AGENTS.discord-workflow.md`。
 
+## 更新通知
+
+团队 Discord 里会有 `#bot更新日志`。当 bot、API、接入脚本或 skill 更新时，管理员会在这个频道说明本次变化，并附上已有同事更新本地环境的提示词。
+
 ## Bot API
 
 ### `GET /onboarding/setup.sh`

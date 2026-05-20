@@ -153,3 +153,19 @@ discord-workflow-close REQ-0001 "闭口说明"
 ```
 
 调用成功后，把返回的 Discord 链接和最终状态告诉用户。
+
+## Bot / Onboarding 维护规则
+
+当 bot、API、接入脚本、GitHub onboarding 文档、Codex skill 或工作流规则发生更新时，维护者必须同步做三件事：
+
+1. 更新 GitHub onboarding repo 和 VPS 上的 bot 文件。
+2. 运行 Discord onboarding 同步脚本，刷新 `#从这里开始` 的接入信息。
+3. 在 `#bot更新日志` 发布本次更新内容，并写清楚已有同事如何更新本地环境。
+
+维护脚本：
+
+```bash
+npm run sync:onboarding
+```
+
+这类维护动作是 bot 管理动作，不是普通需求发布；不要把它发布到 `需求池`。
