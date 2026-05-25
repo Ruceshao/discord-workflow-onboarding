@@ -111,6 +111,8 @@ description: Company Discord workflow assistant for Codex. Use when the user ask
 # Discord Workflow
 
 Read `~/.discord-workflow/AGENTS.discord-workflow.md` before doing any workflow work. Use Chinese by default. Show drafts or operation summaries before any Discord write. Publish with `discord-workflow-publish`, list with `discord-workflow-list`, read existing requirements with `discord-workflow-read`, reply with `discord-workflow-reply`, and close with `discord-workflow-close`. Never reveal `~/.discord-workflow/config.env` or `DISCORD_WORKFLOW_TOKEN`.
+
+When showing a draft for confirmation, do not show only raw JSON. Show metadata as short fields and expand `body` as readable Markdown with real line breaks. If a draft JSON file exists, use `discord-workflow-preview draft.json` for a local read-only preview.
 EOF
 fi
 
@@ -148,6 +150,81 @@ curl -sS "$DISCORD_WORKFLOW_API_URL/publish" \
   "${data_arg[@]}"
 EOF
 chmod +x "$bin_dir/discord-workflow-publish"
+
+cat > "$bin_dir/discord-workflow-preview" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+input="${1:-}"
+
+if [[ -z "$input" ]]; then
+  echo "Usage: discord-workflow-preview draft.json" >&2
+  exit 2
+fi
+
+node - "$input" <<'NODE'
+const { readFileSync } = require('node:fs');
+
+const input = process.argv[2];
+const text = readFileSync(input, 'utf8');
+let draft;
+
+try {
+  draft = JSON.parse(text);
+} catch (error) {
+  console.error(`Invalid draft JSON: ${error.message}`);
+  process.exit(2);
+}
+
+const value = (text, fallback = '待确认') => {
+  const normalized = String(text || '').trim();
+  return normalized || fallback;
+};
+
+const list = (items, fallback = '- 暂无') => {
+  if (!Array.isArray(items) || items.length === 0) {
+    return fallback;
+  }
+
+  return items
+    .map((item) => String(item || '').trim())
+    .filter(Boolean)
+    .map((item) => `- ${item}`)
+    .join('\n') || fallback;
+};
+
+const tags = Array.isArray(draft.tags) && draft.tags.length
+  ? draft.tags.map((tag) => String(tag).trim()).filter(Boolean).join('、')
+  : '未打标签';
+
+const lines = [
+  '# Discord 工作流确认稿',
+  '',
+  '## 发布字段',
+  '',
+  `- type: ${value(draft.type)}`,
+  `- title: ${value(draft.title)}`,
+  `- tags: ${tags}`,
+  `- source: ${value(draft.source)}`,
+  `- submitter: ${value(draft.submitter)}`,
+  '',
+  '## 正文预览',
+  '',
+  value(draft.body),
+  '',
+  '## 待确认信息',
+  '',
+  list(draft.missingInfo),
+  '',
+  '## AI 说明',
+  '',
+  value(draft.confidenceNote, '请人工确认事实、优先级、负责人和截止时间。')
+];
+
+process.stdout.write(`${lines.join('\n').trimEnd()}\n`);
+NODE
+EOF
+chmod +x "$bin_dir/discord-workflow-preview"
 
 cat > "$bin_dir/discord-workflow-close" <<'EOF'
 #!/usr/bin/env bash
@@ -327,6 +404,9 @@ $skill_dir
 
 发布命令：
 $bin_dir/discord-workflow-publish
+
+确认预览命令：
+$bin_dir/discord-workflow-preview draft.json
 
 关闭命令：
 $bin_dir/discord-workflow-close REQ-0001 "已确认完成并闭口。"

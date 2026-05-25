@@ -26,12 +26,18 @@ For a new requirement or meeting note:
 
 1. Read `~/.discord-workflow/AGENTS.discord-workflow.md`.
 2. Turn the user's natural language into the required Chinese structure.
-3. Show the complete final draft to the user first.
+3. Show the complete final draft to the user first in the readable preview format from the rules file: metadata as short fields, and `body` expanded as normal Markdown with real line breaks rather than a one-line JSON string.
 4. Wait for explicit confirmation such as `确认发布`.
 5. Publish only after confirmation:
 
 ```bash
 discord-workflow-publish draft.json
+```
+
+If a draft JSON file already exists, use the local read-only helper to generate a human-checkable preview:
+
+```bash
+discord-workflow-preview draft.json
 ```
 
 Requirement drafts must not include a manually invented `REQ-xxxx` id. The bot assigns it after publishing.

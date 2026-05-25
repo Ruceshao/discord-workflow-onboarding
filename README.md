@@ -23,7 +23,7 @@
 https://workflow.weebstrading.xyz
 ```
 
-接入密钥应该一人一个。管理员在 VPS 上生成后私发给新人，VPS 只保存 hash 和归属信息。
+接入密钥应该一人一个，不要多人共用。密钥只在生成时显示一次；VPS 里只保存 hash 和归属信息。
 
 AI 会自动完成：
 
@@ -31,6 +31,7 @@ AI 会自动完成：
 - 写入本机配置
 - 安装 Codex skill：`discord-workflow`
 - 安装 `discord-workflow-publish` 命令
+- 安装 `discord-workflow-preview` 只读预览命令
 - 安装 `discord-workflow-list`、`discord-workflow-read`、`discord-workflow-reply`、`discord-workflow-close` 命令
 - 做 health check
 
@@ -51,22 +52,27 @@ export DISCORD_WORKFLOW_TOKEN="由管理员发放的 token"
 ...
 ```
 
-4. AI 给出最终稿候选。
+4. AI 给出可读最终稿候选：发布字段用短行展示，正文按 Markdown 原样展开换行，不要只贴一整段 raw JSON。
 5. 用户在 AI 客户端里继续修改，直到确认。
 6. 用户确认后，AI 调用 Discord Workflow Bot 的 `/publish` 接口。
-7. Bot 把内容直接发布到对应 Forum。
+7. Bot 分配需求编号，并把内容直接发布到对应 Forum。
 
 Discord 只保留两个主要 Forum：
 
 - `需求池`：所有持续工作对象。进度、决策、风险都沉淀在需求帖里。
 - `会议纪要`：事件型会议记录。
 
+另外有两个说明频道：
+
+- `从这里开始`：最新接入入口和新人提示词。
+- `bot更新日志`：bot、API、接入脚本和 skill 更新说明，以及已有同事的更新方法。
+
 需求帖只使用状态和优先级标签：
 
 - 状态：`未开始`、`进行中`、`阻塞中`、`已完成`、`已归档`
 - 优先级：`P0`、`P1`、`P2`、`P3`
 
-需求编号由 bot 自动生成，例如 `REQ-0001`。编号会写入需求帖标题、正文和 API 响应，后续读取、回复、改标签、关闭需求或补充进展时优先使用编号定位。
+需求编号由 bot 自动生成，例如 `REQ-0001`。AI 客户端不要自己编编号；发布成功后，用返回的 `workItemId` 定位后续读取、回复、改标签或关闭需求。
 
 ## Codex Skill
 
@@ -84,9 +90,17 @@ Codex 用户可以直接说：
 
 skill 本身只负责触发和流程约束；详细格式仍然读取本机的 `~/.discord-workflow/AGENTS.discord-workflow.md`。
 
-## 更新通知
+如果 AI 已经生成 `draft.json`，可以先运行这个只读命令生成方便人工检查的确认稿：
 
-团队 Discord 里会有 `#bot更新日志`。当 bot、API、接入脚本或 skill 更新时，管理员会在这个频道说明本次变化，并附上已有同事更新本地环境的提示词。
+```bash
+discord-workflow-preview draft.json
+```
+
+这个命令不会请求 API，也不会发布到 Discord。
+
+## 已有同事更新
+
+当 Discord `#bot更新日志` 有更新时，把日志里的“如何更新本地工作流”提示词交给 Codex / Claude。更新过程会复用本机 `~/.discord-workflow/config.env` 里的 API URL 和接入密钥，不需要把 token 发到公开频道。
 
 ## Bot API
 
@@ -128,9 +142,83 @@ skill 本身只负责触发和流程约束；详细格式仍然读取本机的 `
 }
 ```
 
+### `GET /items`
+
+读取 bot 本地索引里的需求列表，可用于用户只记得大概标题、状态或优先级时辅助定位编号。
+
+示例：
+
+```bash
+discord-workflow-list --status 进行中
+```
+
+接口响应：
+
+```json
+{
+  "ok": true,
+  "count": 1,
+  "items": [
+    {
+      "workItemId": "REQ-0001",
+      "type": "requirement",
+      "title": "测试本地 AI 工作流",
+      "status": "进行中",
+      "tags": ["进行中", "P0"],
+      "url": "https://discord.com/channels/..."
+    }
+  ]
+}
+```
+
+### `GET /items/:workItemId`
+
+按需求编号读取单条需求的 Discord 线程上下文，包括原帖和最近回复。AI 回复、改标签或闭口前应该先读取。
+
+示例：
+
+```bash
+discord-workflow-read REQ-0001
+```
+
+### `POST /reply`
+
+按需求编号在对应 Discord 需求帖下回复进度、卡点、决策或补充说明。需要改状态时，通过 `tags` 传入新的状态标签；不需要改状态时不要传标签。
+
+请求：
+
+```json
+{
+  "workItemId": "REQ-0001",
+  "kind": "blocker",
+  "body": "当前卡点：需要确认 API 读取权限和回复格式。",
+  "tags": ["阻塞中"],
+  "submitter": "Ruce Shao"
+}
+```
+
+响应：
+
+```json
+{
+  "ok": true,
+  "status": "replied",
+  "workItemId": "REQ-0001",
+  "kind": "blocker",
+  "tags": ["阻塞中", "P0"],
+  "url": "https://discord.com/channels/..."
+}
+```
+
+本地命令：
+
+```bash
+discord-workflow-reply REQ-0001 --kind blocker --tag 阻塞中 "当前卡点：需要确认 API 读取权限和回复格式。"
+```
+
 ### `POST /close`
 
-按编号关闭需求，把状态标签改成 `已完成`，保留优先级标签，并在 Discord 里补充闭口记录。
+按需求编号关闭需求。bot 会根据本地索引定位 Discord 帖子，把状态标签改成 `已完成`，保留优先级标签，并补充闭口记录。
 
 请求：
 
@@ -142,18 +230,42 @@ skill 本身只负责触发和流程约束；详细格式仍然读取本机的 `
 }
 ```
 
-读取和回复已有需求：
+响应：
 
-```bash
-discord-workflow-list --status 进行中
-discord-workflow-read REQ-0001
-discord-workflow-reply REQ-0001 --kind progress --tag 进行中 "这里写进度或卡点说明。"
+```json
+{
+  "ok": true,
+  "status": "closed",
+  "workItemId": "REQ-0001",
+  "tags": ["已完成", "P0"],
+  "url": "https://discord.com/channels/..."
+}
 ```
 
 ## 安全规则
 
 - `DISCORD_WORKFLOW_TOKEN` 不要写进仓库。
+- 接入密钥不要写进仓库、Discord 公开频道或群聊；建议管理员私发给个人。
+- 新人接入密钥一人一个，并在 VPS 的 `data/api-keys.json` 入档。这个文件只保存 hash，不保存明文 token。
 - AI 每次调用 bot 前必须展示最终稿并获得用户确认。
+- 确认稿必须可读：`body` 要作为 Markdown 正文展开换行，不要只以 JSON 字符串的一长条展示。
 - 用户要求修改时，在 AI 客户端里直接改，不要让用户去 Discord 退回重来。
 - 如果缺少 token 或 API URL，只输出最终稿，不要尝试发布。
 - 生产环境建议通过 HTTPS 暴露 API；没有 HTTPS 前，不要在公网明文传输 token。
+
+## 管理员发放密钥
+
+在 VPS 项目目录运行：
+
+```bash
+cd /home/ubuntu/discord-ai-workflow-bot
+npm run key:create -- --owner "同事姓名" --label "同事姓名 Codex 客户端"
+```
+
+命令会输出 `token`，只复制这一段给同事。`data/api-keys.json` 会记录 key id、owner、label、hash 和创建时间。
+
+吊销某个 key 时，编辑 `data/api-keys.json`，把对应记录的 `status` 改成 `revoked`，然后重启 bot：
+
+```bash
+sudo systemctl restart discord-ai-workflow-bot.service
+```

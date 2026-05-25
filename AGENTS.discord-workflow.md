@@ -55,6 +55,36 @@
 
 注意：JSON 里不需要填写需求编号。发布成功后，bot 会返回 `workItemId`，并把编号写入 Discord 标题和正文。
 
+## 确认预览格式
+
+给用户确认时，必须先展示“可读确认稿”，不要只贴一整段 raw JSON。尤其 `body` 不能以 JSON 字符串的一长条形式展示，必须按 Markdown 原文展开换行，方便人逐段检查。
+
+推荐确认稿格式：
+
+```markdown
+## 发布字段
+
+- type:
+- title:
+- tags:
+- source:
+- submitter:
+
+## 正文预览
+
+这里按最终 Discord Markdown 正文原样展开，保留标题、空行和列表。
+
+## 待确认信息
+
+- 待确认项
+
+## AI 说明
+
+哪些内容是 AI 判断，哪些需要人工确认。
+```
+
+确认后实际调用 bot 时，仍然把完整正文写入 JSON 的 `body` 字段。如果已经生成了 `draft.json`，可以用只读命令 `discord-workflow-preview draft.json` 生成可读确认稿；这个命令只做本地预览，不会发布到 Discord。
+
 ## 正文模板
 
 ### 需求
