@@ -1,6 +1,6 @@
 ---
 name: discord-workflow
-description: Company Discord workflow assistant for Codex. Use when the user asks to整理、发布、读取、回复、更新、关闭、闭口 Discord 工作流记录, mentions 需求池、会议纪要、REQ 编号、进度、卡点、阻塞、决策记录, or wants natural-language work input converted into the company's Discord workflow format.
+description: Company Discord workflow assistant for Codex. Use when the user asks to整理、发布、读取、回复、编辑、更新、关闭、闭口、删除 Discord 工作流记录, mentions 需求池、会议纪要、REQ 编号、进度、卡点、阻塞、决策记录, or wants natural-language work input converted into the company's Discord workflow format.
 ---
 
 # Discord Workflow
@@ -19,6 +19,7 @@ If the file is missing, tell the user to run the onboarding setup first. Do not 
 - Write missing information as `待确认`.
 - Never reveal `~/.discord-workflow/config.env` or `DISCORD_WORKFLOW_TOKEN`.
 - Do not perform visible Discord changes until the user explicitly confirms the final draft or operation summary.
+- If a draft or reply is too long for one Discord message, preserve the same headings and structure and let the bot continue directly in the next message. Do not add extra continuation headings, truncate, or flatten the content.
 
 ## New Records
 
@@ -52,7 +53,7 @@ If the user only provides a title or vague description, list candidates and ask 
 discord-workflow-list --status 进行中
 ```
 
-Before replying, updating, or closing, read the current thread context:
+Before replying, editing, updating, closing, or deleting, read the current thread context:
 
 ```bash
 discord-workflow-read REQ-0001
@@ -82,6 +83,32 @@ Allowed `--kind` values:
 
 Only pass `--tag` when the status or priority should actually change. For a blocker, usually use `--kind blocker --tag 阻塞中`.
 
+Do not use replies to set `已完成` or `已归档`; use the close flow instead. If a requirement is already closed, do not reply, change tags, or reopen it. Create a new requirement, or ask for explicit confirmation before deleting the old one.
+
+## Editing Messages
+
+Use edits only to correct bot-authored messages that were already sent, such as typos, formatting, line breaks, or factual corrections. Do not use edits to silently change status, priority, or closure outcomes.
+
+1. Read the requirement first and identify the target `messageId` from `recentMessages`.
+2. Show the operation summary and the full replacement body to the user.
+3. After confirmation, call:
+
+```bash
+discord-workflow-edit REQ-0001 MESSAGE_ID "修正后的完整消息正文"
+```
+
+Prefer stdin or heredocs for multi-line content so real line breaks are preserved:
+
+```bash
+discord-workflow-edit REQ-0001 MESSAGE_ID <<'EOF'
+修正后的第一段。
+
+修正后的第二段。
+EOF
+```
+
+The command can only edit messages in the mapped requirement thread that were authored by the workflow bot. Closed or deleted requirements cannot be edited.
+
 ## Closing
 
 When the user asks to close or 闭口 a requirement:
@@ -93,6 +120,14 @@ When the user asks to close or 闭口 a requirement:
 
 ```bash
 discord-workflow-close REQ-0001 "闭口说明"
+```
+
+## Deleting
+
+Deleting is a maintainer action for a wrong or unreadable requirement that must be rewritten. Read the requirement first, show the deletion target, reason, and impact summary, and wait for explicit confirmation. After confirmation, call:
+
+```bash
+discord-workflow-delete REQ-0001 "删除原因"
 ```
 
 ## Safety Check

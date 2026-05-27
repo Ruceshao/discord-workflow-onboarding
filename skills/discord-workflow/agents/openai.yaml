@@ -1,4 +1,4 @@
 interface:
   display_name: "Discord Workflow"
-  short_description: "整理、读取、回复和发布公司 Discord 工作流记录"
+  short_description: "整理、读取、回复、编辑、关闭和删除公司 Discord 工作流记录"
   default_prompt: "使用 discord-workflow skill，帮我整理下面的需求；先给我看最终稿，不要发布。"
